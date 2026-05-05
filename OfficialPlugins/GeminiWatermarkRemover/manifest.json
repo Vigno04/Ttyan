@@ -1,0 +1,11 @@
+{
+  "id": "com.ttyan.geminiwatermarkremover",
+  "name": "Gemini Watermark Remover",
+  "version": "1.0.0",
+  "description": "Remove the AI sparkle watermark from Gemini images. 100% client-side, lossless, and private.",
+  "author": "TTYAN Official",
+  "path": "Image/Tools",
+  "entrypoint": "worker.js",
+  "permissions": [],
+  "modules": []
+}

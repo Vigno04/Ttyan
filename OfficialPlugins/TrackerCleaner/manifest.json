@@ -1,0 +1,11 @@
+{
+  "id": "com.ttyan.trackercleaner",
+  "name": "Tracker Cleaner",
+  "version": "1.0.0",
+  "description": "Clean, format, and deduplicate lists of torrent trackers.",
+  "author": "Vigro09",
+  "path": "Torrents/Tools",
+  "entrypoint": "worker.js",
+  "permissions": [],
+  "modules": []
+}

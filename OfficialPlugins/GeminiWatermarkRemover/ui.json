@@ -1,0 +1,11 @@
+{
+  "layout": [
+    { "type": "title", "text": "Gemini Watermark Remover" },
+    { "type": "paragraph", "text": "Remove the visible ✨ AI-Sparkle watermark from Gemini AI images. 100% client-side — your images never leave your browser." },
+    { "type": "image-upload", "id": "input_images", "accept": "image/*", "multiple": true, "label": "Drop images here or click to upload", "hint": "PNG, JPG, WebP — supports multiple files" },
+    { "type": "button", "action": "process_images", "label": "Remove Watermark" },
+    { "type": "divider" },
+    { "type": "title", "text": "Results" },
+    { "type": "image-output", "id": "output_images" }
+  ]
+}

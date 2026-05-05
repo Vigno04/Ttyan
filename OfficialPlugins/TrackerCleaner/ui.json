@@ -1,0 +1,12 @@
+{
+  "layout": [
+    { "type": "title", "text": "Tracker Cleaner" },
+    { "type": "textarea", "id": "input_trackers", "placeholder": "Paste your trackers here...", "rows": 5 },
+    { "type": "button", "action": "process_trackers", "label": "Clean & Add to List" },
+    { "type": "divider" },
+    { "type": "title", "text": "Saved Trackers" },
+    { "type": "textarea", "id": "output_trackers", "readonly": true, "rows": 10, "placeholder": "Your clean, deduplicated trackers will appear here." },
+    { "type": "button", "action": "copy_trackers", "label": "Copy All" },
+    { "type": "button", "action": "clear_trackers", "label": "Clear Saved" }
+  ]
+}
