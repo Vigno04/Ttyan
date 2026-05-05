@@ -104,22 +104,54 @@ const props = defineProps({
   uiJson: Object
 })
 
-const layout = ref(props.uiJson?.layout || [])
+const layout = ref([])
 const state = ref({})
 const isProcessing = ref(false)
 const fileUrlCache = new Map()
 let worker = null
 
-const getUserStoreKey = () => `ttyan_store_${props.user?.username}_${props.plugin?.id}`
+// Watch for UI schema changes
+watch(() => props.uiJson, (newUi) => {
+  layout.value = newUi?.layout || []
+  state.value = {}
+}, { immediate: true })
+
+/**
+ * Convert a GitHub blob viewer URL to the raw content URL so we can fetch JSON.
+ */
+const toRawUrl = (url) => {
+  if (!url) return url
+  if (url.includes('raw.githubusercontent.com')) return url
+  const match = url.match(/github\.com\/([^/]+)\/([^/]+)\/(blob|tree)\/([^/]+)\/(.+)/)
+  if (match) {
+    const [, user, repo, , branch, filePath] = match
+    return `https://raw.githubusercontent.com/${user}/${repo}/${branch}/${filePath}`
+  }
+  return url
+}
 
 const initWorker = async () => {
-  if (worker) worker.terminate()
+  if (worker) {
+    worker.terminate()
+    worker = null
+  }
   
   const { basePath, entrypoint } = props.plugin || {}
   if (!basePath || !entrypoint) return
 
   try {
-    worker = new Worker(`${basePath}/${entrypoint}`)
+    isProcessing.value = true
+    const workerUrl = `${basePath}/${entrypoint}`
+    const rawWorkerUrl = toRawUrl(workerUrl)
+    
+    // Fetch the worker script text to create a local Blob URL (avoids CORS/Security issues with remote workers)
+    const res = await fetch(rawWorkerUrl)
+    if (!res.ok) throw new Error(`Failed to fetch worker script: ${res.status}`)
+    const scriptText = await res.text()
+    const blob = new Blob([scriptText], { type: 'application/javascript' })
+    const blobUrl = URL.createObjectURL(blob)
+
+    worker = new Worker(blobUrl)
     
     worker.onmessage = async (e) => {
       const { type, id, value, message } = e.data
@@ -140,8 +172,8 @@ const initWorker = async () => {
     
     // Auto-probe for assets
     const [bg48, bg96] = await Promise.all([
-      fetch(`${basePath}/assets/bg_48.png`).then(r => r.ok ? r.blob() : null).catch(() => null),
-      fetch(`${basePath}/assets/bg_96.png`).then(r => r.ok ? r.blob() : null).catch(() => null)
+      fetch(toRawUrl(`${basePath}/assets/bg_48.png`)).then(r => r.ok ? r.blob() : null).catch(() => null),
+      fetch(toRawUrl(`${basePath}/assets/bg_96.png`)).then(r => r.ok ? r.blob() : null).catch(() => null)
     ])
 
     worker.postMessage({
@@ -153,12 +185,17 @@ const initWorker = async () => {
     })
   } catch (err) {
     console.error('Failed to initialize worker:', err)
+    isProcessing.value = false
   }
 }
 
-onMounted(() => {
-  initWorker()
-})
+// Watch for plugin changes to re-initialize the worker
+// This ensures that switching plugins via the sidebar works correctly
+watch(() => props.plugin?.id, (newId) => {
+  if (newId) {
+    initWorker()
+  }
+}, { immediate: true })
 
 onUnmounted(() => {
   if (worker) worker.terminate()

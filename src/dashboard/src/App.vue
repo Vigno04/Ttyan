@@ -64,13 +64,27 @@ const handleLogout = () => {
   currentView.value = 'home'
 }
 
+/**
+ * Convert a GitHub blob viewer URL to the raw content URL.
+ */
+const toRawUrl = (url) => {
+  if (!url) return url
+  if (url.includes('raw.githubusercontent.com')) return url
+  const match = url.match(/github\.com\/([^/]+)\/([^/]+)\/(blob|tree)\/([^/]+)\/(.+)/)
+  if (match) {
+    const [, user, repo, , branch, filePath] = match
+    return `https://raw.githubusercontent.com/${user}/${repo}/${branch}/${filePath}`
+  }
+  return url
+}
+
 const openPlugin = async (plugin) => {
   activePlugin.value = plugin
 
   // Use the plugin's own basePath to load its ui.json — works for any plugin regardless of origin
   if (plugin.basePath) {
     try {
-      const res = await fetch(`${plugin.basePath}/ui.json`)
+      const res = await fetch(toRawUrl(`${plugin.basePath}/ui.json`))
       if (res.ok) {
         activeUiJson.value = await res.json()
         currentView.value = 'plugin'

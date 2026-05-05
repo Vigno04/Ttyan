@@ -211,6 +211,22 @@ watch(groupedPlugins, (newGroups) => {
   color: var(--text-primary);
 }
 
+.plugin-item:hover .icon-xs {
+  color: var(--accent-color);
+}
+
+.tree-line {
+  position: absolute;
+  left: -12px;
+  top: -8px;
+  bottom: 50%;
+  width: 12px;
+  border-left: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--border-color);
+  border-bottom-left-radius: 6px;
+  pointer-events: none;
+}
+
 .empty-state {
   padding: 20px;
   text-align: center;
