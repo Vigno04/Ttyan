@@ -110,6 +110,8 @@ const isProcessing = ref(false)
 const fileUrlCache = new Map()
 let worker = null
 
+const getUserStoreKey = () => `ttyan_store_${props.user?.username}_${props.plugin?.id}`
+
 // Watch for UI schema changes
 watch(() => props.uiJson, (newUi) => {
   layout.value = newUi?.layout || []
@@ -205,7 +207,9 @@ onUnmounted(() => {
 const triggerAction = (action) => {
   if (worker) {
     isProcessing.value = true
-    worker.postMessage({ action, payload: { ...state.value } })
+    // Clone state to avoid Proxy cloning issues
+    const payload = JSON.parse(JSON.stringify(state.value))
+    worker.postMessage({ action, payload })
   }
 }
 

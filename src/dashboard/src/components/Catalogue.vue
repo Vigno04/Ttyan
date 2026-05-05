@@ -428,22 +428,6 @@ onMounted(fetchAllRepos)
   margin-bottom: 20px;
 }
 
-.input-glass {
-  width: 100%;
-  padding: 12px 16px;
-  background-color: var(--bg-secondary);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
-  color: var(--text-primary);
-  font-family: inherit;
-  font-size: 0.95rem;
-}
-.input-glass:focus {
-  outline: none;
-  border-color: var(--accent-color);
-  box-shadow: 0 0 0 2px var(--accent-light);
-}
-
 /* ── Plugin grid ── */
 .plugins-list {
   display: grid;
