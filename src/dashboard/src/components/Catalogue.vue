@@ -155,7 +155,7 @@ const visibleTabs = computed(() => {
 // ── Repositories ──────────────────────────────────────────────────────────────
 
 const DEFAULT_REPOS = [
-  { url: 'https://github.com/Vigno04/Ttyan/blob/main/OfficialPlugins/registry.json', status: 'unknown' }
+  { url: 'https://github.com/Vigno04/Ttyan/blob/develop/OfficialPlugins/registry.json', status: 'unknown' }
 ]
 
 const repositories = ref(
@@ -199,19 +199,34 @@ const fetchAllRepos = async () => {
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       
       const pluginFolders = await res.json() // Array of strings like ["OfficialPlugins/TrackerCleaner"]
+      
       // Get the base URL by removing the registry.json part
       const base = repo.url.substring(0, repo.url.lastIndexOf('/'))
 
       for (const folderPath of pluginFolders) {
         try {
-          const manifestUrl = `${base}/${folderPath}/manifest.json`
+          // If folderPath is "A/B" and base ends with "/A", we should use parent of base.
+          // This avoids doubling folder names if the registry is inside the plugin folder.
+          let effectiveBase = base;
+          const folderParts = folderPath.split('/');
+          const baseParts = base.split('/');
+          
+          if (folderParts.length > 0 && baseParts.length > 0) {
+            const firstFolder = folderParts[0];
+            const lastBase = baseParts[baseParts.length - 1];
+            if (firstFolder === lastBase) {
+              effectiveBase = baseParts.slice(0, -1).join('/');
+            }
+          }
+
+          const manifestUrl = `${effectiveBase}/${folderPath}/manifest.json`
           const manifestRes = await fetch(toRawUrl(manifestUrl))
           if (manifestRes.ok) {
             const manifest = await manifestRes.json()
             if (!seen.has(manifest.id)) {
               seen.add(manifest.id)
               // basePath is the folder containing the manifest
-              manifest.basePath = toRawUrl(`${base}/${folderPath}`)
+              manifest.basePath = toRawUrl(`${effectiveBase}/${folderPath}`)
               merged.push(manifest)
             }
           }

@@ -1,4 +1,4 @@
 [
-  "OfficialPlugins/TrackerCleaner",
-  "OfficialPlugins/GeminiWatermarkRemover"
+  "TrackerCleaner",
+  "GeminiWatermarkRemover"
 ]
