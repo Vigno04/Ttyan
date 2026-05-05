@@ -87,8 +87,8 @@
         @click="triggerAction(component.action)"
         :disabled="isProcessing"
       >
-        <div v-if="isProcessing" class="mini-spinner"></div>
-        <span>{{ isProcessing ? 'Processing...' : component.label }}</span>
+        <div v-if="isProcessing && activeAction === component.action" class="mini-spinner"></div>
+        <span>{{ (isProcessing && activeAction === component.action) ? 'Processing...' : component.label }}</span>
       </button>
 
     </div>
@@ -107,10 +107,13 @@ const props = defineProps({
 const layout = ref([])
 const state = ref({})
 const isProcessing = ref(false)
+const activeAction = ref(null)
 const fileUrlCache = new Map()
 let worker = null
 
-const getUserStoreKey = () => `ttyan_store_${props.user?.username}_${props.plugin?.id}`
+const API_BASE = '/api/storage'
+
+const getUserStoreKey = () => `${props.user?.username}/${props.plugin?.id}`
 
 // Watch for UI schema changes
 watch(() => props.uiJson, (newUi) => {
@@ -155,6 +158,28 @@ const initWorker = async () => {
 
     worker = new Worker(blobUrl)
     
+    const storageType = props.plugin?.storage || 'browser'
+    let store = {}
+
+    if (storageType === 'server') {
+      try {
+        const storeRes = await fetch(`${API_BASE}/${getUserStoreKey()}`)
+        if (storeRes.ok) {
+          store = await storeRes.json()
+        }
+      } catch (err) {
+        console.warn('Failed to load storage from server:', err)
+      }
+    } else {
+      // Browser storage (localStorage)
+      try {
+        const localKey = `ttyan_local_${props.user?.username}_${props.plugin?.id}`
+        store = JSON.parse(localStorage.getItem(localKey) || '{}')
+      } catch (err) {
+        console.warn('Failed to load storage from localStorage:', err)
+      }
+    }
+
     worker.onmessage = async (e) => {
       const { type, id, value, message } = e.data
       
@@ -164,14 +189,36 @@ const initWorker = async () => {
         console.log(`[Plugin ${props.plugin.id}]: ${message}`)
       } else if (type === 'ready') {
         isProcessing.value = false
+        activeAction.value = null
       } else if (type === 'error') {
         alert(`Error: ${message}`)
         isProcessing.value = false
+        activeAction.value = null
       } else if (type === 'save_state') {
-        const { key, value } = e.data
-        const store = JSON.parse(localStorage.getItem(getUserStoreKey()) || '{}')
-        store[key] = value
-        localStorage.setItem(getUserStoreKey(), JSON.stringify(store))
+        const { key, value: saveValue } = e.data
+        const storageType = props.plugin?.storage || 'browser'
+
+        if (storageType === 'server') {
+          try {
+            const currentRes = await fetch(`${API_BASE}/${getUserStoreKey()}`)
+            const current = currentRes.ok ? await currentRes.json() : {}
+            current[key] = saveValue
+            
+            await fetch(`${API_BASE}/${getUserStoreKey()}`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(current)
+            })
+          } catch (err) {
+            console.error('Failed to save state to server:', err)
+          }
+        } else {
+          // Browser storage
+          const localKey = `ttyan_local_${props.user?.username}_${props.plugin?.id}`
+          const current = JSON.parse(localStorage.getItem(localKey) || '{}')
+          current[key] = saveValue
+          localStorage.setItem(localKey, JSON.stringify(current))
+        }
       } else if (type === 'copy_clipboard') {
         const { value } = e.data
         navigator.clipboard.writeText(value).then(() => {
@@ -182,8 +229,6 @@ const initWorker = async () => {
       }
     }
 
-    const store = JSON.parse(localStorage.getItem(getUserStoreKey()) || '{}')
-    
     // Auto-probe for assets
     const [bg48, bg96] = await Promise.all([
       fetch(toRawUrl(`${basePath}/assets/bg_48.png`)).then(r => r.ok ? r.blob() : null).catch(() => null),
@@ -219,6 +264,7 @@ onUnmounted(() => {
 const triggerAction = (action) => {
   if (worker) {
     isProcessing.value = true
+    activeAction.value = action
     // Use toRaw to get the underlying object and avoid Proxy issues with postMessage.
     // Structured clone (which postMessage uses internally) will handle Files/Blobs.
     const rawState = toRaw(state.value)

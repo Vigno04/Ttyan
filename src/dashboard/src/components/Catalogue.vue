@@ -227,6 +227,12 @@ const fetchAllRepos = async () => {
               seen.add(manifest.id)
               // basePath is the folder containing the manifest
               manifest.basePath = toRawUrl(`${effectiveBase}/${folderPath}`)
+              
+              // Resolve relative image paths
+              if (manifest.image && !manifest.image.startsWith('http')) {
+                manifest.image = toRawUrl(`${effectiveBase}/${folderPath}/${manifest.image}`)
+              }
+              
               merged.push(manifest)
             }
           }

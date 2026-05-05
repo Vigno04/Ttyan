@@ -6,6 +6,7 @@
   "author": "Vigro09",
   "path": "Torrents/Tools",
   "entrypoint": "worker.js",
+  "storage": "server",
   "permissions": [],
   "modules": []
 }

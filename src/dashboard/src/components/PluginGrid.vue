@@ -2,12 +2,9 @@
   <div v-if="installedPlugins.length > 0">
     <div v-if="gridMode === 'all'" class="plugin-grid">
       <div class="plugin-card" v-for="plugin in installedPlugins" :key="plugin.id" @click="$emit('open-plugin', plugin)">
-        <div class="plugin-icon-wrapper" :class="plugin.image ? 'has-image' : (plugin.color || 'blue-gradient')">
+        <div class="plugin-icon-wrapper" :style="{ background: plugin.image ? 'transparent' : pluginGradient(plugin.name) }">
           <img v-if="plugin.image" :src="plugin.image" :alt="plugin.name" class="plugin-image" />
-          <svg v-else class="plugin-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M12 2v20"></path>
-            <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
-          </svg>
+          <span v-else class="plugin-initial">{{ plugin.name.charAt(0) }}</span>
         </div>
         <h3 class="plugin-title">{{ plugin.name }}</h3>
       </div>
@@ -18,12 +15,9 @@
         <h2 class="folder-title">{{ folder }}</h2>
         <div class="plugin-grid folder-grid">
           <div class="plugin-card" v-for="plugin in plugins" :key="plugin.id" @click="$emit('open-plugin', plugin)">
-            <div class="plugin-icon-wrapper" :class="plugin.image ? 'has-image' : (plugin.color || 'blue-gradient')">
+            <div class="plugin-icon-wrapper" :style="{ background: plugin.image ? 'transparent' : pluginGradient(plugin.name) }">
               <img v-if="plugin.image" :src="plugin.image" :alt="plugin.name" class="plugin-image" />
-              <svg v-else class="plugin-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M12 2v20"></path>
-                <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
-              </svg>
+              <span v-else class="plugin-initial">{{ plugin.name.charAt(0) }}</span>
             </div>
             <h3 class="plugin-title">{{ plugin.name }}</h3>
           </div>
@@ -67,6 +61,15 @@ const groupedPlugins = computed(() => {
   })
   return groups
 })
+
+const GRADIENTS = [
+  'linear-gradient(135deg, #3b82f6, #6366f1)',
+  'linear-gradient(135deg, #8b5cf6, #ec4899)',
+  'linear-gradient(135deg, #10b981, #3b82f6)',
+  'linear-gradient(135deg, #f59e0b, #ef4444)',
+  'linear-gradient(135deg, #14b8a6, #6366f1)',
+]
+const pluginGradient = (name) => GRADIENTS[name.charCodeAt(0) % GRADIENTS.length]
 </script>
 
 <style scoped>
@@ -173,10 +176,12 @@ const groupedPlugins = computed(() => {
   border-radius: inherit;
 }
 
-.plugin-icon {
-  width: 48px;
-  height: 48px;
-  color: white;
+.plugin-initial {
+  font-size: 3rem;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.9);
+  text-transform: uppercase;
+  user-select: none;
   z-index: 1;
 }
 
