@@ -96,7 +96,7 @@
 </template>
 
 <script setup>
-import { ref, watch, onMounted, onUnmounted } from 'vue'
+import { ref, watch, onMounted, onUnmounted, toRaw } from 'vue'
 
 const props = defineProps({
   plugin: Object,
@@ -167,6 +167,18 @@ const initWorker = async () => {
       } else if (type === 'error') {
         alert(`Error: ${message}`)
         isProcessing.value = false
+      } else if (type === 'save_state') {
+        const { key, value } = e.data
+        const store = JSON.parse(localStorage.getItem(getUserStoreKey()) || '{}')
+        store[key] = value
+        localStorage.setItem(getUserStoreKey(), JSON.stringify(store))
+      } else if (type === 'copy_clipboard') {
+        const { value } = e.data
+        navigator.clipboard.writeText(value).then(() => {
+          console.log('Copied to clipboard')
+        }).catch(err => {
+          console.error('Failed to copy: ', err)
+        })
       }
     }
 
@@ -207,8 +219,16 @@ onUnmounted(() => {
 const triggerAction = (action) => {
   if (worker) {
     isProcessing.value = true
-    // Clone state to avoid Proxy cloning issues
-    const payload = JSON.parse(JSON.stringify(state.value))
+    // Use toRaw to get the underlying object and avoid Proxy issues with postMessage.
+    // Structured clone (which postMessage uses internally) will handle Files/Blobs.
+    const rawState = toRaw(state.value)
+    const payload = {}
+    
+    // Create a shallow clone of the state object
+    for (const key in rawState) {
+      payload[key] = toRaw(rawState[key])
+    }
+    
     worker.postMessage({ action, payload })
   }
 }

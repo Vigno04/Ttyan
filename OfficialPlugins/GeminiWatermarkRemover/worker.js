@@ -102,8 +102,8 @@ self.onmessage = async function (e) {
   }
 
   if (action === 'process_images') {
-    // Payload: { files: File[] }
-    const files = payload && payload.files;
+    // Payload: { input_images: File[] }
+    const files = payload && (payload.input_images || payload.files);
     if (!files || files.length === 0) {
       self.postMessage({ type: 'notify', message: 'No images provided.' });
       return;

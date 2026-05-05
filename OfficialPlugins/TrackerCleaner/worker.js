@@ -12,6 +12,7 @@ self.onmessage = function(e) {
       payload.savedList.forEach(t => savedTrackers.add(t));
     }
     self.postMessage({ type: "update_ui", id: "output_trackers", value: Array.from(savedTrackers).join('\n') });
+    self.postMessage({ type: "ready" });
   }
 
   if (action === "process_trackers") {
@@ -58,6 +59,8 @@ self.onmessage = function(e) {
       key: "savedList",
       value: Array.from(savedTrackers)
     });
+
+    self.postMessage({ type: "ready" });
   }
 
   if (action === "copy_trackers") {
@@ -66,6 +69,7 @@ self.onmessage = function(e) {
       type: "copy_clipboard",
       value: Array.from(savedTrackers).join('\n')
     });
+    self.postMessage({ type: "ready" });
   }
 
   if (action === "clear_trackers") {
@@ -73,5 +77,6 @@ self.onmessage = function(e) {
     self.postMessage({ type: "update_ui", id: "output_trackers", value: "" });
     self.postMessage({ type: "save_state", key: "savedList", value: [] });
     self.postMessage({ type: "notify", message: "Saved trackers cleared." });
+    self.postMessage({ type: "ready" });
   }
 };
