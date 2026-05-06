@@ -3,17 +3,14 @@
   "name": "Tracker Cleaner",
   "version": "1.0.0",
   "description": "Clean, format, and deduplicate lists of torrent trackers.",
-  "author": "Vigro09",
+  "author": "TTYAN Official",
   "path": "Torrents/Tools",
   "entrypoint": "worker.js",
+  "changes": "Initial release of the Tracker Cleaner plugin. Supports basic cleaning and deduplication of torrent tracker lists.",
   "storage": "server",
   "permissions": [
-    "storage:server",
-    "network:http"
+    "storage:sandboxed"
   ],
-  "allowed_domains": [
-    "raw.githubusercontent.com",
-    "github.com"
-  ],
+  "domains": [],
   "modules": []
 }

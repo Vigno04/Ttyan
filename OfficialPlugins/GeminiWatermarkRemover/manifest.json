@@ -6,8 +6,7 @@
   "author": "TTYAN Official",
   "path": "Image/Tools",
   "entrypoint": "worker.js",
-  "permissions": [
-    "storage:local"
-  ],
+  "permissions": [],
+  "domains": [],
   "modules": []
 }

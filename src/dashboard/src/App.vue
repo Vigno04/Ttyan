@@ -40,13 +40,21 @@ const activeUiJson = ref(null)
 
 const installedPlugins = ref([])
 
-const syncPlugins = () => {
-  installedPlugins.value = JSON.parse(localStorage.getItem('ttyan_installed_plugins') || '[]')
+const syncPlugins = async () => {
+  try {
+    const res = await fetch('/api/plugins')
+    if (res.ok) {
+      installedPlugins.value = await res.json()
+    }
+  } catch (e) {
+    console.error('[TTYAN] Failed to sync plugins from server:', e)
+    // Fallback to empty if server is unavailable
+    installedPlugins.value = []
+  }
 }
 
 onMounted(() => {
   syncPlugins()
-  window.addEventListener('storage', syncPlugins)
 })
 
 const toggleSidebar = () => {

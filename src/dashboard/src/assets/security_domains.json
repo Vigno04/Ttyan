@@ -1,0 +1,22 @@
+{
+  "reasons": {
+    "low": "Verified safe domains required for core functionality.",
+    "medium": "General internet access; use with caution.",
+    "high": "Restricted or untrusted domains."
+  },
+  "low": [
+    { "pattern": "https://*.youtube.com/*", "reason": "Trusted media provider" },
+    { "pattern": "https://*.youtu.be/*", "reason": "Trusted media provider" },
+    { "pattern": "https://*.tiktok.com/*", "reason": "Trusted media provider" },
+    { "pattern": "https://*.instagram.com/*", "reason": "Trusted social media provider" },
+    { "pattern": "https://*.facebook.com/*", "reason": "Trusted social media provider" },
+    { "pattern": "https://*.twitter.com/*", "reason": "Trusted social media provider" },
+    { "pattern": "https://*.x.com/*", "reason": "Trusted social media provider" },
+    { "pattern": "https://*.twitch.tv/*", "reason": "Trusted streaming provider" },
+    { "pattern": "https://*.reddit.com/*", "reason": "Trusted social media provider" },
+    { "pattern": "https://*.vimeo.com/*", "reason": "Trusted media provider" },
+    { "pattern": "https://github.com/Vigno04/Ttyan/*", "reason": "Official project assets" }
+  ],
+  "medium": [],
+  "high": []
+}

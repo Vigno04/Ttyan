@@ -31,7 +31,7 @@
       </div>
 
       <div v-else class="plugins-list">
-        <div class="plugin-card glass" v-for="plugin in filteredPlugins" :key="plugin.id">
+        <div class="plugin-card glass" v-for="plugin in filteredPlugins" :key="plugin.id" @click="openDetails(plugin)">
           <div class="plugin-banner">
             <img v-if="plugin.image" :src="plugin.image" :alt="plugin.name" class="plugin-banner-img" />
             <div v-else class="plugin-banner-placeholder" :style="{ background: pluginGradient(plugin.name) }">
@@ -40,21 +40,19 @@
           </div>
           <div class="plugin-header">
             <h3>{{ plugin.name }}</h3>
-            <div class="version-selector" v-if="pluginVersions[plugin.id]?.length > 1">
-              <select v-model="selectedVersions[plugin.id]" class="version-select">
-                <option v-for="v in pluginVersions[plugin.id]" :key="v.version" :value="v.version">v{{ v.version }}</option>
-              </select>
-            </div>
-            <span v-else class="version badge">v{{ plugin.version }}</span>
+            <span class="version badge">v{{ plugin.version }}</span>
           </div>
           <p class="description">{{ plugin.description }}</p>
           <div class="plugin-footer">
             <span class="author">by {{ plugin.author }}</span>
-            <div v-if="isAdmin">
-              <button class="btn btn-primary" v-if="!isInstalled(plugin.id)" @click="installPlugin(plugin)">Install</button>
-              <button class="btn btn-disabled" v-else disabled>Installed</button>
+            <div class="footer-actions">
+              <button 
+                v-if="!isInstalled(plugin.id)" 
+                class="btn btn-primary btn-sm" 
+                @click.stop="fastInstall(plugin)"
+              >Install</button>
+              <span v-else class="status-label installed">Installed</span>
             </div>
-            <span v-else class="status-label">{{ isInstalled(plugin.id) ? 'Installed' : 'Available' }}</span>
           </div>
         </div>
 
@@ -79,7 +77,7 @@
       </div>
 
       <div class="plugins-list">
-        <div class="plugin-card glass" v-for="plugin in installedPlugins" :key="plugin.id">
+        <div class="plugin-card glass" v-for="plugin in installedPlugins" :key="plugin.id" @click="openDetails(plugin)">
           <div class="plugin-banner">
             <img v-if="plugin.image" :src="plugin.image" :alt="plugin.name" class="plugin-banner-img" />
             <div v-else class="plugin-banner-placeholder" :style="{ background: pluginGradient(plugin.name) }">
@@ -94,9 +92,9 @@
             </div>
           </div>
           <p class="description">{{ plugin.description }}</p>
-          <div class="plugin-footer" v-if="isAdmin">
-            <button class="btn btn-danger btn-sm" @click="uninstallPlugin(plugin.id)">Uninstall</button>
-            <button class="btn btn-success btn-sm" v-if="hasUpdate(plugin)" @click="updatePlugin(plugin)">Update</button>
+          <div class="plugin-footer">
+            <span class="author">by {{ plugin.author }}</span>
+            <span class="status-label installed">Installed</span>
           </div>
         </div>
 
@@ -132,41 +130,170 @@
       </div>
     </div>
 
-    <!-- Installation Modal Popup -->
-    <div v-if="installingPlugin" class="modal-overlay">
-      <div class="modal glass install-modal">
-        <h3>Install {{ installingPlugin.name }}</h3>
-        <p>This plugin requests the following permissions and modules. Please review carefully.</p>
+    <!-- Plugin Details Modal -->
+    <div v-if="selectedPlugin" class="modal-overlay" @click.self="selectedPlugin = null">
+      <div class="modal detail-modal">
+        <button class="close-btn" @click="selectedPlugin = null">&times;</button>
         
-        <div class="permissions-list">
-          <!-- Green Tier (Safe) -->
-          <div v-if="tierCategorized.green.length" class="permission-tier green-tier">
-            <h4><span class="tier-icon">🟢</span> Verified Safe</h4>
-            <ul>
-              <li v-for="(item, i) in tierCategorized.green" :key="'g'+i">{{ item.label }}</li>
-            </ul>
+        <div class="detail-container">
+          <!-- Left Column: Info & History -->
+          <div class="detail-main">
+            <section class="detail-header">
+              <h1>{{ selectedPlugin.name }}</h1>
+              <p class="detail-description">{{ selectedPlugin.description }}</p>
+              <div class="source-info">
+                <span>Source: {{ selectedPlugin.basePath }}</span>
+              </div>
+            </section>
+
+            <section class="revision-history">
+              <h3>Revision History</h3>
+              <div class="history-list">
+                <div 
+                  v-for="v in getPluginVersions(selectedPlugin.id)" 
+                  :key="v.version" 
+                  class="history-item glass" 
+                  @click="selectVersion(v)"
+                >
+                  <div class="history-row">
+                    <span class="history-v">{{ v.version }} — {{ v.date || 'Stable' }}</span>
+                    <div class="history-arrow">
+                      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" :class="{ 'rotated': expandedHistory === v.version }">
+                        <polyline points="6 9 12 15 18 9"></polyline>
+                      </svg>
+                    </div>
+                  </div>
+                  <div v-if="expandedHistory === v.version" class="history-changes">
+                    <p>{{ v.changes || 'No changelog provided for this version.' }}</p>
+                  </div>
+                </div>
+              </div>
+            </section>
           </div>
-          
-          <!-- Yellow Tier (Warnings) -->
-          <div v-if="tierCategorized.yellow.length" class="permission-tier yellow-tier">
-            <h4><span class="tier-icon">🟡</span> Standard Permissions</h4>
-            <ul>
-              <li v-for="(item, i) in tierCategorized.yellow" :key="'y'+i">{{ item.label }}</li>
-            </ul>
-          </div>
-          
-          <!-- Red Tier (Danger) -->
-          <div v-if="tierCategorized.red.length" class="permission-tier red-tier">
-            <h4><span class="tier-icon">🔴</span> High Risk</h4>
-            <ul>
-              <li v-for="(item, i) in tierCategorized.red" :key="'r'+i">{{ item.label }}</li>
-            </ul>
+
+          <!-- Right Column: Actions & Meta -->
+          <div class="detail-sidebar">
+            <div class="detail-banner glass">
+              <img v-if="selectedPlugin.image" :src="selectedPlugin.image" :alt="selectedPlugin.name" />
+              <div v-else class="banner-placeholder" :style="{ background: pluginGradient(selectedPlugin.name) }">
+                <span>{{ selectedPlugin.name }}</span>
+              </div>
+            </div>
+
+            <div class="detail-actions" v-if="isAdmin">
+              <button 
+                class="btn btn-primary btn-block" 
+                @click="serverInstall(activeVersion)"
+                :disabled="isActionLoading"
+              >
+                <div v-if="isActionLoading" class="mini-spinner"></div>
+                <span>{{ isInstalled(activeVersion.id) && isCurrentVersion(activeVersion) ? 'Re-install' : 'Install v' + activeVersion.version }}</span>
+              </button>
+              
+              <button 
+                v-if="isInstalled(activeVersion.id)"
+                class="btn btn-danger btn-block" 
+                @click="serverUninstall(activeVersion.id)"
+                :disabled="isActionLoading"
+              >
+                <div v-if="isActionLoading" class="mini-spinner"></div>
+                <span>Uninstall</span>
+              </button>
+            </div>
+
+            <div class="info-table glass">
+              <div class="info-row">
+                <span class="info-label">Status</span>
+                <span class="info-value" :class="isInstalled(activeVersion.id) ? 'text-success' : 'text-muted'">
+                  {{ isInstalled(activeVersion.id) ? (isCurrentVersion(activeVersion) ? 'Active' : 'Installed (Other version)') : 'Not Installed' }}
+                </span>
+              </div>
+              <div class="info-row">
+                <span class="info-label">Version</span>
+                <span class="info-value">{{ activeVersion.version }}</span>
+              </div>
+              <div class="info-row">
+                <span class="info-label">Developer</span>
+                <span class="info-value">{{ activeVersion.author }}</span>
+              </div>
+              <div class="info-row">
+                <span class="info-label">Repository</span>
+                <span class="info-value text-accent">Universal repository</span>
+              </div>
+            </div>
           </div>
         </div>
+      </div>
+    </div>
+    <!-- Installation Confirmation Modal (Permissions) -->
+    <div v-if="confirmingPlugin" class="modal-overlay" @click.self="confirmingPlugin = null">
+      <div class="modal detail-modal confirmation-modal">
+        <button class="close-btn" @click="confirmingPlugin = null">&times;</button>
+        
+        <div class="modal-content-inner">
+          <h3>Install {{ confirmingPlugin.name }}</h3>
+          <p class="modal-hint">Please review the permissions requested by this plugin.</p>
+          
+          <div class="permissions-list">
+            <!-- Low Risk Tier -->
+            <div v-if="tierCategorized.low.length" class="permission-tier low-tier">
+              <div class="tier-header" @click="expandedTiers.low = !expandedTiers.low">
+                <h4><span class="tier-icon">🟢</span> Low Risk ({{ tierCategorized.low.length }})</h4>
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" :class="{ 'rotated': expandedTiers.low }">
+                  <polyline points="6 9 12 15 18 9"></polyline>
+                </svg>
+              </div>
+              <ul v-if="expandedTiers.low" class="tier-content">
+                <li v-for="(item, i) in tierCategorized.low" :key="'l'+i">
+                  <div class="perm-info" :title="item.reason">
+                    <span class="perm-label">{{ item.label }}</span>
+                  </div>
+                </li>
+              </ul>
+            </div>
+            
+            <!-- Medium Risk Tier -->
+            <div v-if="tierCategorized.medium.length" class="permission-tier medium-tier">
+              <div class="tier-header" @click="expandedTiers.medium = !expandedTiers.medium">
+                <h4><span class="tier-icon">🟡</span> Medium Risk ({{ tierCategorized.medium.length }})</h4>
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" :class="{ 'rotated': expandedTiers.medium }">
+                  <polyline points="6 9 12 15 18 9"></polyline>
+                </svg>
+              </div>
+              <ul v-if="expandedTiers.medium" class="tier-content">
+                <li v-for="(item, i) in tierCategorized.medium" :key="'m'+i">
+                  <div class="perm-info" :title="item.reason">
+                    <span class="perm-label">{{ item.label }}</span>
+                  </div>
+                </li>
+              </ul>
+            </div>
+            
+            <!-- High Risk Tier -->
+            <div v-if="tierCategorized.high.length" class="permission-tier high-tier">
+              <div class="tier-header" @click="expandedTiers.high = !expandedTiers.high">
+                <h4><span class="tier-icon">🔴</span> High Risk ({{ tierCategorized.high.length }})</h4>
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" :class="{ 'rotated': expandedTiers.high }">
+                  <polyline points="6 9 12 15 18 9"></polyline>
+                </svg>
+              </div>
+              <ul v-if="expandedTiers.high" class="tier-content">
+                <li v-for="(item, i) in tierCategorized.high" :key="'h'+i">
+                  <div class="perm-info" :title="item.reason">
+                    <span class="perm-label">{{ item.label }}</span>
+                  </div>
+                </li>
+              </ul>
+            </div>
+          </div>
 
-        <div class="modal-actions">
-          <button class="btn btn-outline" @click="cancelInstall">Cancel</button>
-          <button class="btn btn-primary" @click="confirmInstall" :disabled="!allDependenciesMet">Install Plugin</button>
+          <div class="modal-footer">
+            <button class="btn btn-outline" @click="confirmingPlugin = null">Cancel</button>
+            <button class="btn btn-primary" @click="confirmServerInstall" :disabled="isActionLoading">
+              <div v-if="isActionLoading" class="mini-spinner"></div>
+              <span>Confirm & Install</span>
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -174,7 +301,10 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
+import securityRepos from '../assets/security_repositories.json'
+import securityDomains from '../assets/security_domains.json'
+import securityPermissions from '../assets/security_permissions.json'
 
 const props = defineProps({
   user: Object,
@@ -188,6 +318,13 @@ const newRepoUrl = ref('')
 const searchQuery = ref('')
 const isLoading = ref(false)
 const fetchError = ref(null)
+const selectedPlugin = ref(null)
+const confirmingPlugin = ref(null)
+const tierCategorized = ref({ low: [], medium: [], high: [] })
+const expandedTiers = ref({ low: false, medium: true, high: true })
+const isActionLoading = ref(false)
+const expandedHistory = ref(null)
+const activeVersion = ref(null)
 
 const isAdmin = computed(() => props.user?.role?.toLowerCase() === 'admin')
 const visibleTabs = computed(() => {
@@ -195,6 +332,11 @@ const visibleTabs = computed(() => {
   if (isAdmin.value) tabs.push('Repositories')
   return tabs
 })
+
+const isCurrentVersion = (plugin) => {
+  const installed = props.installedPlugins.find(p => p.id === plugin.id)
+  return installed && installed.version === plugin.version
+}
 
 // ── Repositories ──────────────────────────────────────────────────────────────
 
@@ -210,14 +352,8 @@ const saveRepos = () => {
   localStorage.setItem('ttyan_repositories', JSON.stringify(repositories.value))
 }
 
-/**
- * Convert a GitHub blob viewer URL to the raw content URL so we can fetch JSON.
- * Handles both blob and tree URLs.
- */
 const toRawUrl = (url) => {
-  // Already raw
   if (url.includes('raw.githubusercontent.com')) return url
-  // github.com/USER/REPO/blob/BRANCH/PATH  →  raw.githubusercontent.com/USER/REPO/BRANCH/PATH
   const match = url.match(/github\.com\/([^/]+)\/([^/]+)\/(blob|tree)\/([^/]+)\/(.+)/)
   if (match) {
     const [, user, repo, , branch, filePath] = match
@@ -229,8 +365,8 @@ const toRawUrl = (url) => {
 // ── Available plugins (merged from all repos) ─────────────────────────────────
 
 const availablePlugins = ref([])
-const pluginVersions = ref({}) // id -> array of manifests
-const selectedVersions = ref({}) // id -> selected version string
+const pluginVersions = ref({})
+const selectedVersions = ref({})
 
 const fetchAllRepos = async () => {
   isLoading.value = true
@@ -263,7 +399,6 @@ const fetchAllRepos = async () => {
         }
       }
       
-      // Get the base URL by removing the registry.json part
       const base = repo.url.substring(0, repo.url.lastIndexOf('/'))
 
       for (const folderPath of pluginFolders) {
@@ -282,9 +417,10 @@ const fetchAllRepos = async () => {
 
           const manifestUrl = `${effectiveBase}/${folderPath}/manifest.json`
           const manifestRes = await fetch(toRawUrl(manifestUrl))
-          if (manifestRes.ok) {
-            const manifest = await manifestRes.json()
-            manifest.basePath = toRawUrl(`${effectiveBase}/${folderPath}`)
+            if (manifestRes.ok) {
+              const manifest = await manifestRes.json()
+              manifest.basePath = toRawUrl(`${effectiveBase}/${folderPath}`)
+              manifest.registryUrl = repo.url
             
             if (manifest.image && !manifest.image.startsWith('http')) {
               manifest.image = toRawUrl(`${effectiveBase}/${folderPath}/${manifest.image}`)
@@ -293,7 +429,6 @@ const fetchAllRepos = async () => {
             if (!mergedMap.has(manifest.id)) {
               mergedMap.set(manifest.id, [])
             }
-            // Check if this version already exists
             const existingVersions = mergedMap.get(manifest.id)
             if (!existingVersions.some(m => m.version === manifest.version)) {
               existingVersions.push(manifest)
@@ -312,15 +447,13 @@ const fetchAllRepos = async () => {
     }
   }
 
-  // Process gathered versions
   const merged = []
   const vMap = {}
   for (const [id, versions] of mergedMap.entries()) {
-    // Sort versions descending roughly
     versions.sort((a, b) => b.version.localeCompare(a.version))
     vMap[id] = versions
     selectedVersions.value[id] = versions[0].version
-    merged.push(versions[0]) // default to showing newest
+    merged.push(versions[0])
   }
 
   saveRepos()
@@ -344,96 +477,164 @@ const filteredPlugins = computed(() => {
 
 // ── Installed plugins ──────────────────────────────────────────────────────────
 
-const saveInstalled = (newList) => {
-  localStorage.setItem('ttyan_installed_plugins', JSON.stringify(newList))
-  emit('plugins-updated')
-}
-
 const isInstalled = (id) => props.installedPlugins.some(p => p.id === id)
-
 const getLatestVersion = (id) => availablePlugins.value.find(p => p.id === id)?.version ?? null
-
 const hasUpdate = (plugin) => {
   const latest = getLatestVersion(plugin.id)
   return latest && latest !== plugin.version
 }
 
-const installingPlugin = ref(null)
-const tierCategorized = ref({ green: [], yellow: [], red: [] })
-const allDependenciesMet = ref(true)
+const openDetails = (plugin) => {
+  selectedPlugin.value = plugin
+  // Set the initial active version to the current installed version or the latest available
+  const installed = props.installedPlugins.find(p => p.id === plugin.id)
+  activeVersion.value = installed || plugin
+  expandedHistory.value = null // Closed by default
+}
 
-const installPlugin = (plugin) => {
-  if (!isInstalled(plugin.id)) {
-    // Generate tier categorization
-    const categorization = { green: [], yellow: [], red: [] }
-    let met = true
+const selectVersion = (v) => {
+  activeVersion.value = v
+  expandedHistory.value = expandedHistory.value === v.version ? null : v.version
+}
+
+const toggleHistory = (version) => {
+  expandedHistory.value = expandedHistory.value === version ? null : version
+}
+
+const getPluginVersions = (id) => {
+  return pluginVersions.value[id] || []
+}
+
+const matchPattern = (value, pattern) => {
+  if (!pattern || !value) return false
+  const regexStr = '^' + pattern.replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*') + '$'
+  const regex = new RegExp(regexStr)
+  return regex.test(value)
+}
+
+const getBestTier = (value, configObj, defaultTier = 'high') => {
+  const matches = []
+  // Normalize value for matching (convert github.com to raw.githubusercontent)
+  const normalizedValue = value ? toRawUrl(value) : value
+
+  // Iterate over tiers (low, medium, high)
+  ;['low', 'medium', 'high'].forEach(tier => {
+    const patterns = configObj[tier] || []
+    patterns.forEach(p => {
+      const patternStr = typeof p === 'string' ? p : p.pattern
+      const normalizedPattern = toRawUrl(patternStr)
+      
+      if (matchPattern(normalizedValue, normalizedPattern)) {
+        matches.push({ tier, pattern: patternStr, reason: p.reason })
+      }
+    })
+  })
+  
+  if (matches.length === 0) {
+    return { 
+      tier: defaultTier, 
+      label: value, 
+      reason: configObj.reasons?.[defaultTier] || 'Untrusted or unverified item' 
+    }
+  }
+  
+  // Sort by specificity: longest pattern first
+  matches.sort((a, b) => b.pattern.length - a.pattern.length)
+  const best = matches[0]
+  return { 
+    tier: best.tier, 
+    label: value, 
+    reason: best.reason || configObj.reasons?.[best.tier] || '' 
+  }
+}
+
+const serverInstall = async (plugin) => {
+  confirmingPlugin.value = plugin
+  const categorization = { low: [], medium: [], high: [] }
+  
+  // 1. Check Repository Tier (Now using registryUrl)
+  const repoResult = getBestTier(plugin.registryUrl, securityRepos)
+  categorization[repoResult.tier].push({ 
+    label: `Source: ${repoResult.label}`,
+    reason: repoResult.reason
+  })
+
+  // 2. Check System Permissions
+  if (plugin.permissions && Array.isArray(plugin.permissions)) {
+    plugin.permissions.forEach(perm => {
+      const result = getBestTier(perm, securityPermissions)
+      categorization[result.tier].push({ 
+        label: perm,
+        reason: result.reason
+      })
+    })
+  }
+
+  // 3. Check Domain Permissions
+  if (plugin.domains && Array.isArray(plugin.domains)) {
+    plugin.domains.forEach(domain => {
+      const result = getBestTier(domain, securityDomains)
+      categorization[result.tier].push({ 
+        label: `Network: ${domain}`,
+        reason: result.reason
+      })
+    })
+  }
+  
+  tierCategorized.value = categorization
+}
+
+const fastInstall = (plugin) => {
+  serverInstall(plugin)
+}
+
+const confirmServerInstall = async () => {
+  if (!confirmingPlugin.value) return
+  
+  isActionLoading.value = true
+  try {
+    const res = await fetch('/api/plugins/install', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        id: confirmingPlugin.value.id,
+        basePath: confirmingPlugin.value.basePath
+      })
+    })
     
-    // Check publisher
-    const isSafePublisher = plugin.author?.toLowerCase().includes('ttyan') || 
-                            (plugin.basePath && plugin.basePath.includes('github.com/vigno04'))
-    if (isSafePublisher) {
-      categorization.green.push({ label: `Verified Publisher: ${plugin.author}` })
+    if (res.ok) {
+      emit('plugins-updated')
+      confirmingPlugin.value = null
     } else {
-      categorization.yellow.push({ label: `Third-party Publisher: ${plugin.author || 'Unknown'}` })
+      const err = await res.json()
+      alert(`Installation failed: ${err.detail}`)
     }
+  } catch (e) {
+    alert(`Error connecting to server: ${e.message}`)
+  } finally {
+    isActionLoading.value = false
+  }
+}
 
-    // Check permissions
-    if (plugin.permissions && Array.isArray(plugin.permissions)) {
-      plugin.permissions.forEach(perm => {
-        if (perm.includes('youtube.com') || perm.includes('tiktok.com')) {
-          categorization.green.push({ label: `Safe Domain Access: ${perm}` })
-        } else if (perm === 'storage:sandboxed') {
-          categorization.yellow.push({ label: 'Sandboxed Local Storage (Low risk)' })
-        } else if (perm.startsWith('http')) {
-          categorization.yellow.push({ label: `Internet Access: ${perm}` })
-        } else {
-          categorization.red.push({ label: `High Risk Permission: ${perm}` })
-        }
-      })
-    }
-
-    // Check modules
-    if (plugin.modules && Array.isArray(plugin.modules)) {
-      plugin.modules.forEach(mod => {
-        const repoModules = window.ttyan_repoModules || {}
-        if (repoModules[mod]) {
-          categorization.green.push({ label: `Official Module Request: ${repoModules[mod].name} (${mod})` })
-        } else {
-          categorization.yellow.push({ label: `Unknown Module Request: ${mod}` })
-        }
-      })
-    }
+const serverUninstall = async (id) => {
+  if (!confirm('Are you sure you want to uninstall this plugin?')) return
+  
+  isActionLoading.value = true
+  try {
+    const res = await fetch(`/api/plugins/${id}`, {
+      method: 'DELETE'
+    })
     
-    tierCategorized.value = categorization
-    allDependenciesMet.value = met
-    installingPlugin.value = plugin
-  }
-}
-
-const cancelInstall = () => {
-  installingPlugin.value = null
-}
-
-const confirmInstall = () => {
-  if (installingPlugin.value) {
-    saveInstalled([...props.installedPlugins, { ...installingPlugin.value }])
-    installingPlugin.value = null
-  }
-}
-
-const uninstallPlugin = (id) => {
-  saveInstalled(props.installedPlugins.filter(p => p.id !== id))
-}
-
-const updatePlugin = (plugin) => {
-  const index = props.installedPlugins.findIndex(p => p.id === plugin.id)
-  if (index !== -1) {
-    const latest = availablePlugins.value.find(p => p.id === plugin.id)
-    if (latest) {
-      const updated = [...props.installedPlugins]
-      updated[index] = { ...latest }
-      saveInstalled(updated)
+    if (res.ok) {
+      emit('plugins-updated')
+      selectedPlugin.value = null
+    } else {
+      alert('Uninstallation failed')
     }
+  } catch (e) {
+    alert(`Error: ${e.message}`)
+  } finally {
+    isActionLoading.value = false
   }
 }
 
@@ -474,7 +675,21 @@ const GRADIENTS = [
 ]
 const pluginGradient = (name) => GRADIENTS[name.charCodeAt(0) % GRADIENTS.length]
 
-onMounted(fetchAllRepos)
+const handleEsc = (e) => {
+  if (e.key === 'Escape') {
+    selectedPlugin.value = null
+    confirmingPlugin.value = null
+  }
+}
+
+onMounted(() => {
+  fetchAllRepos()
+  window.addEventListener('keydown', handleEsc)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('keydown', handleEsc)
+})
 </script>
 
 <style scoped>
@@ -484,7 +699,6 @@ onMounted(fetchAllRepos)
   margin: 0 auto;
 }
 
-/* ── Banner ── */
 .plugin-banner {
   width: 100%;
   height: 100px;
@@ -516,7 +730,6 @@ onMounted(fetchAllRepos)
   user-select: none;
 }
 
-/* ── Header ── */
 .page-header {
   margin-bottom: 24px;
 }
@@ -562,13 +775,11 @@ onMounted(fetchAllRepos)
   to   { opacity: 1; transform: translateY(0); }
 }
 
-/* ── Search / actions ── */
 .search-bar,
 .actions-bar {
   margin-bottom: 20px;
 }
 
-/* ── Plugin grid ── */
 .plugins-list {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
@@ -582,6 +793,7 @@ onMounted(fetchAllRepos)
   gap: 12px;
   border-radius: var(--radius-lg);
   transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+  cursor: pointer;
 }
 .plugin-card:hover {
   transform: translateY(-2px);
@@ -646,16 +858,62 @@ onMounted(fetchAllRepos)
   color: var(--text-muted);
 }
 
-.status-label {
-  font-size: 0.78rem;
-  font-weight: 600;
-  color: var(--accent-color);
-  background-color: var(--accent-light);
-  padding: 3px 10px;
-  border-radius: var(--radius-full);
+.permission-tier {
+  border-radius: var(--radius-md);
+  margin-bottom: 12px;
+  border: 1px solid transparent;
+  overflow: hidden;
 }
 
-/* ── Buttons ── */
+.tier-header {
+  padding: 10px 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.2s;
+}
+
+.tier-header:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.tier-header h4 {
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.tier-header svg {
+  transition: transform 0.2s;
+}
+
+.tier-header svg.rotated {
+  transform: rotate(180deg);
+}
+
+.tier-content {
+  padding: 8px 16px;
+  margin: 0;
+  list-style: none;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.perm-info {
+  padding: 4px 0;
+  cursor: help;
+}
+
+.perm-label {
+  font-weight: 500;
+  font-size: 0.88rem;
+  color: var(--text-secondary);
+}
+
+.low-tier { background: rgba(16, 185, 129, 0.08); border-color: rgba(16, 185, 129, 0.15); }
+.medium-tier { background: rgba(245, 158, 11, 0.08); border-color: rgba(245, 158, 11, 0.15); }
+.high-tier { background: rgba(239, 68, 68, 0.08); border-color: rgba(239, 68, 68, 0.15); }
+
 .btn {
   padding: 7px 16px;
   border-radius: var(--radius-md);
@@ -672,18 +930,37 @@ onMounted(fetchAllRepos)
 .btn-sm    { padding: 4px 10px; font-size: 0.82rem; }
 .btn-primary   { background-color: var(--accent-color); color: #fff; }
 .btn-primary:hover { background-color: var(--accent-hover); }
-.btn-success   { background-color: #10b981; color: #fff; }
-.btn-success:hover { background-color: #059669; }
+.low-tier { background: rgba(16, 185, 129, 0.1); border-color: rgba(16, 185, 129, 0.2); }
+.medium-tier { background: rgba(245, 158, 11, 0.1); border-color: rgba(245, 158, 11, 0.2); }
+.high-tier { background: rgba(239, 68, 68, 0.1); border-color: rgba(239, 68, 68, 0.2); }
+
+.perm-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: 8px;
+}
+
+.perm-label {
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--text-primary);
+}
+
+.perm-reason {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  opacity: 0.8;
+}
+
 .btn-danger    { background-color: transparent; color: #ef4444; border: 1px solid #ef4444; }
 .btn-danger:hover  { background-color: rgba(239,68,68,.12); }
 .btn-outline   { background-color: transparent; border: 1px solid var(--border-color); color: var(--text-primary); }
 .btn-outline:hover { background-color: var(--bg-secondary); }
-.btn-disabled  { background-color: var(--bg-tertiary); color: var(--text-secondary); cursor: not-allowed; }
 .btn-icon      { width: 32px; height: 32px; padding: 0; justify-content: center; }
 
 .import-btn { cursor: pointer; }
 
-/* ── Loading / error ── */
 .loading-state {
   display: flex;
   flex-direction: column;
@@ -721,7 +998,6 @@ onMounted(fetchAllRepos)
   border-color: rgba(239,68,68,.3);
 }
 
-/* ── Repo tab ── */
 .repo-form {
   display: flex;
   gap: 12px;
@@ -773,14 +1049,234 @@ onMounted(fetchAllRepos)
   margin-left: 16px;
 }
 
-.version-select {
-  background: var(--bg-glass);
+/* ── Details Modal ── */
+.detail-modal {
+  max-width: 960px;
+  width: 90%;
+  max-height: 85vh;
+  padding: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--bg-secondary) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  border: 1px solid var(--border-color);
+}
+
+.close-btn {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 2rem;
+  line-height: 1;
+  cursor: pointer;
+  z-index: 10;
+}
+
+.detail-container {
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  height: 100%;
+}
+
+.detail-main {
+  padding: 40px;
+  overflow-y: auto;
+}
+
+.detail-header h1 {
+  margin: 0 0 16px 0;
+  font-size: 2rem;
   color: var(--text-primary);
-  border: 1px solid var(--border-glass);
-  border-radius: var(--radius-sm);
-  padding: 2px 6px;
-  font-size: 0.75rem;
-  font-weight: 500;
-  outline: none;
+}
+
+.detail-description {
+  color: var(--text-secondary);
+  font-size: 1.1rem;
+  line-height: 1.6;
+  margin-bottom: 24px;
+}
+
+.source-info {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin-bottom: 40px;
+}
+
+.revision-history h3 {
+  margin-bottom: 20px;
+  color: var(--text-primary);
+}
+
+.history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.history-item {
+  padding: 14px 20px;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+}
+
+.history-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+  width: 100%;
+}
+
+.history-v {
+  flex-grow: 1;
+}
+
+.history-arrow {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+}
+
+.history-row svg {
+  transition: transform var(--transition-normal);
+}
+
+.history-row svg.rotated {
+  transform: rotate(180deg);
+}
+
+.history-changes {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border-light);
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  animation: slideDown 0.2s ease-out;
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.detail-sidebar {
+  background-color: rgba(255, 255, 255, 0.03);
+  border-left: 1px solid var(--border-color);
+  padding: 30px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  overflow-y: auto;
+}
+
+.detail-banner {
+  aspect-ratio: 16/10;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.detail-banner img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.banner-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  text-align: center;
+  color: white;
+  font-weight: bold;
+}
+
+.detail-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.btn-block {
+  width: 100%;
+  justify-content: center;
+  padding: 12px;
+}
+
+.info-table {
+  display: flex;
+  flex-direction: column;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.info-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border-color);
+  font-size: 0.875rem;
+}
+
+.info-row:last-child { border-bottom: none; }
+
+.info-label { color: var(--text-muted); }
+.info-value { font-weight: 500; text-align: right; }
+
+.text-success { color: #10b981; }
+.text-accent { color: var(--accent-color); }
+
+.mini-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin-right: 8px;
+}
+
+.status-label.installed { background: var(--accent-light); color: var(--accent-color); }
+.status-label.available { background: var(--bg-tertiary); color: var(--text-secondary); }
+
+.confirmation-modal {
+  max-width: 500px;
+  max-height: 80vh;
+}
+
+.modal-content-inner {
+  padding: 30px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.modal-hint {
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+}
+
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 10px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border-color);
+}
+
+.footer-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 </style>

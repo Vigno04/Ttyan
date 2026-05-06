@@ -1,0 +1,20 @@
+{
+  "reasons": {
+    "low": "Official and verified sources.",
+    "medium": "Experimental or development branches from official sources.",
+    "high": "Unknown or potentially dangerous third-party sources."
+  },
+  "low": [
+    { 
+      "pattern": "https://github.com/Vigno04/Ttyan/blob/main/OfficialPlugins/registry.json", 
+      "reason": "Official repository of the project" 
+    }
+  ],
+  "medium": [
+    { 
+      "pattern": "https://github.com/Vigno04/Ttyan/blob/develop/OfficialPlugins/registry.json", 
+      "reason": "Development official repository; may contain unstable code or bugs" 
+    }
+  ],
+  "high": []
+}

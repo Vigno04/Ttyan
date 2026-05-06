@@ -2,16 +2,26 @@
   "id": "com.ttyan.universaldownloader",
   "name": "Universal Downloader",
   "version": "1.0.0",
-  "description": "Download videos from YouTube, TikTok, and more.",
+  "description": "Download videos from YouTube, TikTok, Instagram, Twitter, and more.",
   "author": "Ttyan Official",
   "permissions": [
-    "https://*.youtube.com/*",
-    "https://*.tiktok.com/*",
     "storage:sandboxed"
+  ],
+  "domains": [
+    "https://*.youtube.com/*",
+    "https://*.youtu.be/*",
+    "https://*.tiktok.com/*",
+    "https://*.instagram.com/*",
+    "https://*.facebook.com/*",
+    "https://*.twitter.com/*",
+    "https://*.x.com/*",
+    "https://*.twitch.tv/*",
+    "https://*.reddit.com/*",
+    "https://*.vimeo.com/*"
   ],
   "modules": [
     "ttyan.ytdlp"
   ],
-  "entry": "worker.js",
+  "entrypoint": "worker.js",
   "ui": "ui.json"
 }

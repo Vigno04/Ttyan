@@ -1,0 +1,15 @@
+{
+  "reasons": {
+    "low": "Safe, non-intrusive permissions.",
+    "medium": "Standard plugin permissions with limited scope.",
+    "high": "Powerful permissions that can access sensitive data or system files."
+  },
+  "low": [
+    { "pattern": "storage:sandboxed", "reason": "Access to a private, isolated storage area" }
+  ],
+  "medium": [],
+  "high": [
+    { "pattern": "storage:server", "reason": "Full access to server-side file hosting" },
+    { "pattern": "system:exec", "reason": "Ability to execute commands on the host system" }
+  ]
+}
