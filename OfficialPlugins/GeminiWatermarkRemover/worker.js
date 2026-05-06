@@ -83,16 +83,17 @@ self.onmessage = async function (e) {
   const { action, payload } = e.data;
 
   if (action === 'init') {
-    // Payload: { assets: { bg48: Blob|null, bg96: Blob|null } }
-    // The host provides the background tile blobs so the worker can build alpha maps.
+    const { basePath } = payload;
+    // The plugin now fetches its own assets using the basePath provided by the host.
     try {
-      if (payload && payload.assets) {
-        if (payload.assets.bg48) {
-          assetBases[48] = await createImageBitmap(payload.assets.bg48);
-        }
-        if (payload.assets.bg96) {
-          assetBases[96] = await createImageBitmap(payload.assets.bg96);
-        }
+      if (basePath) {
+        const [bg48, bg96] = await Promise.all([
+          fetch(`${basePath}/assets/bg_48.png`).then(r => r.ok ? r.blob() : null).catch(() => null),
+          fetch(`${basePath}/assets/bg_96.png`).then(r => r.ok ? r.blob() : null).catch(() => null)
+        ]);
+        
+        if (bg48) assetBases[48] = await createImageBitmap(bg48);
+        if (bg96) assetBases[96] = await createImageBitmap(bg96);
       }
       self.postMessage({ type: 'ready' });
     } catch (err) {

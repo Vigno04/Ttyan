@@ -19,6 +19,18 @@
         ></textarea>
       </div>
 
+      <!-- Single-line Input component -->
+      <div v-else-if="component.type === 'input'" class="form-group">
+        <label v-if="component.label" class="input-label">{{ component.label }}</label>
+        <input 
+          type="text"
+          class="input-glass" 
+          v-model="state[component.id]" 
+          :placeholder="component.placeholder" 
+          :readonly="component.readonly"
+        />
+      </div>
+
       <!-- Image Upload component with Previews -->
       <div v-else-if="component.type === 'image-upload'" class="form-group">
         <div 
@@ -229,17 +241,12 @@ const initWorker = async () => {
       }
     }
 
-    // Auto-probe for assets
-    const [bg48, bg96] = await Promise.all([
-      fetch(toRawUrl(`${basePath}/assets/bg_48.png`)).then(r => r.ok ? r.blob() : null).catch(() => null),
-      fetch(toRawUrl(`${basePath}/assets/bg_96.png`)).then(r => r.ok ? r.blob() : null).catch(() => null)
-    ])
-
     worker.postMessage({
       action: 'init',
       payload: { 
-        ...store, 
-        assets: { bg48, bg96 } 
+        ...store,
+        pluginId: props.plugin?.id,
+        basePath: toRawUrl(basePath)
       }
     })
   } catch (err) {
@@ -323,6 +330,13 @@ const downloadImage = (img) => {
   color: var(--text-secondary);
   font-size: 1rem;
   line-height: 1.6;
+}
+
+.input-label {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  margin-bottom: 4px;
 }
 
 .menu-divider {

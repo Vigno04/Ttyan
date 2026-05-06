@@ -23,7 +23,7 @@ app.add_middleware(
 STORAGE_DIR = Path("storage")
 STORAGE_DIR.mkdir(exist_ok=True)
 
-PLUGINS_DIR = Path("plugins")
+PLUGINS_DIR = STORAGE_DIR / "plugins"
 PLUGINS_DIR.mkdir(exist_ok=True)
 
 @app.get("/api/storage/{username}/{plugin_id}")
@@ -111,13 +111,10 @@ async def install_plugin(data: dict = Body(...)):
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Failed to download manifest: {str(e)}")
 
-        # 2. Determine files to download
+        # Files to download: ui.json and entrypoint
         files_to_download = ["ui.json", manifest.get("entrypoint")]
         if manifest.get("image") and not manifest["image"].startswith("http"):
             files_to_download.append(manifest["image"])
-        
-        # Add common assets
-        files_to_download.extend(["assets/bg_48.png", "assets/bg_96.png"])
 
         for file_rel_path in files_to_download:
             if not file_rel_path: continue
@@ -143,8 +140,8 @@ async def uninstall_plugin(plugin_id: str):
         return {"status": "success"}
     raise HTTPException(status_code=404, detail="Plugin not found")
 
-# Serve plugins as static files
-app.mount("/plugins", StaticFiles(directory="plugins"), name="plugins")
+# Serve plugins as static files from the persistent storage
+app.mount("/plugins", StaticFiles(directory=str(PLUGINS_DIR)), name="plugins")
 
 # Serve static files from the 'dist' directory
 # This must be at the end so it doesn't shadow API routes

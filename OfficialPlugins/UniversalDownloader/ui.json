@@ -1,15 +1,19 @@
 {
-  "type": "form",
-  "elements": [
+  "layout": [
+    { "type": "title", "text": "Universal Video Downloader" },
+    { "type": "paragraph", "text": "Enter a video URL from YouTube, TikTok, Instagram, Twitter, or other supported platforms to download high-quality media directly to your device." },
     {
       "type": "input",
       "id": "url",
-      "label": "Video URL"
+      "label": "Video URL",
+      "placeholder": "https://www.youtube.com/watch?v=..."
     },
     {
       "type": "button",
-      "id": "download",
-      "label": "Download"
-    }
+      "action": "download",
+      "label": "Analyze & Download"
+    },
+    { "type": "divider" },
+    { "type": "paragraph", "text": "Note: This is a client-side preview. In the full version, this plugin connects to the TTYAN core download engine." }
   ]
 }
