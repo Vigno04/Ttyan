@@ -26,6 +26,9 @@ STORAGE_DIR.mkdir(exist_ok=True)
 PLUGINS_DIR = STORAGE_DIR / "plugins"
 PLUGINS_DIR.mkdir(exist_ok=True)
 
+MODULES_DIR = STORAGE_DIR / "modules"
+MODULES_DIR.mkdir(exist_ok=True)
+
 @app.get("/api/storage/{username}/{plugin_id}")
 async def get_storage(username: str, plugin_id: str):
     user_dir = STORAGE_DIR / username
@@ -139,6 +142,31 @@ async def uninstall_plugin(plugin_id: str):
         shutil.rmtree(target_dir)
         return {"status": "success"}
     raise HTTPException(status_code=404, detail="Plugin not found")
+
+# --- Module Management ---
+
+@app.get("/api/modules")
+async def list_installed_modules():
+    modules = []
+    if not MODULES_DIR.exists():
+        return []
+    for item in MODULES_DIR.iterdir():
+        if item.is_dir():
+            modules.append(item.name)
+    return modules
+
+@app.post("/api/modules/install")
+async def install_module(data: dict = Body(...)):
+    module_id = data.get("id")
+    if not module_id:
+        raise HTTPException(status_code=400, detail="Missing module id")
+    
+    # For now, we simulate installation by creating a directory
+    # In a production environment, this would download the module binaries/files
+    target = MODULES_DIR / module_id
+    target.mkdir(exist_ok=True)
+    
+    return {"status": "success"}
 
 # Serve plugins as static files from the persistent storage
 app.mount("/plugins", StaticFiles(directory=str(PLUGINS_DIR)), name="plugins")

@@ -14,6 +14,13 @@
       "label": "Analyze & Download"
     },
     { "type": "divider" },
+    { "type": "title", "text": "Status" },
+    {
+      "type": "paragraph",
+      "id": "status_msg",
+      "text": "Waiting for input..."
+    },
+    { "type": "divider" },
     { "type": "paragraph", "text": "Note: This is a client-side preview. In the full version, this plugin connects to the TTYAN core download engine." }
   ]
 }

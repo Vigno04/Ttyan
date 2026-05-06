@@ -18,6 +18,7 @@ self.onmessage = async function(e) {
     }
 
     self.postMessage({ type: 'notify', message: `Analyzing ${url}...` });
+    self.postMessage({ type: 'update_ui', id: 'status_msg', value: 'Analyzing video source...' });
 
     // Mock processing delay
     await new Promise(resolve => setTimeout(resolve, 2000));
@@ -29,16 +30,15 @@ self.onmessage = async function(e) {
       type: 'notify', 
       message: 'Download engine (yt-dlp) initialized. Starting stream extraction...' 
     });
+    self.postMessage({ type: 'update_ui', id: 'status_msg', value: 'Stream extraction in progress...' });
 
     await new Promise(resolve => setTimeout(resolve, 1500));
 
-    self.postMessage({ 
-      type: 'notify', 
-      message: 'Success! Video stream captured. (Note: In this web preview, file saving is handled by the browser).' 
-    });
+    const successMsg = 'Success! Video stream captured. (Note: In this web preview, file saving is handled by the browser).';
+    self.postMessage({ type: 'notify', message: successMsg });
+    self.postMessage({ type: 'update_ui', id: 'status_msg', value: successMsg });
 
     // In a real implementation, we might send back a blob or a download link.
-    // For this fix, we just clear the processing state.
     self.postMessage({ type: 'ready' });
   }
 };

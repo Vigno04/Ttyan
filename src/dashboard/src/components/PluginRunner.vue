@@ -4,7 +4,7 @@
       
       <h2 v-if="component.type === 'title'">{{ component.text }}</h2>
       
-      <p v-else-if="component.type === 'paragraph'" class="description-text">{{ component.text }}</p>
+      <p v-else-if="component.type === 'paragraph'" class="description-text">{{ state[component.id] || component.text }}</p>
       
       <div v-else-if="component.type === 'divider'" class="menu-divider"></div>
       

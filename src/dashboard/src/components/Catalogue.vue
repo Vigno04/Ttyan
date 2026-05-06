@@ -232,7 +232,43 @@
         
         <div class="modal-content-inner">
           <h3>Install {{ confirmingPlugin.name }}</h3>
-          <p class="modal-hint">Please review the permissions requested by this plugin.</p>
+          <p class="modal-hint">Please review the modules and permissions requested by this plugin.</p>
+
+          <!-- Required Modules Section -->
+          <div v-if="confirmingPlugin.modules?.length" class="modules-requirement glass">
+            <div class="section-title">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+                <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+                <line x1="12" y1="22.08" x2="12" y2="12"></line>
+              </svg>
+              <h4>Required Modules</h4>
+            </div>
+            <div class="modules-list">
+              <div v-for="mod in confirmingPlugin.modules" :key="mod" class="module-item">
+                <div class="module-info">
+                  <span class="module-id">{{ mod }}</span>
+                  <div class="status-indicator">
+                    <span :class="['status-dot', isModuleInstalled(mod) ? 'installed' : 'missing']"></span>
+                    <span class="status-text">{{ isModuleInstalled(mod) ? 'Installed' : 'Missing' }}</span>
+                  </div>
+                </div>
+                <button 
+                  v-if="!isModuleInstalled(mod)" 
+                  class="btn btn-sm btn-outline" 
+                  @click="installModule(mod)"
+                  :disabled="isActionLoading"
+                >
+                  Install
+                </button>
+                <span v-else class="check-icon">
+                  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#10b981" stroke-width="3">
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                  </svg>
+                </span>
+              </div>
+            </div>
+          </div>
           
           <div class="permissions-list">
             <!-- Low Risk Tier -->
@@ -325,6 +361,9 @@ const expandedTiers = ref({ low: false, medium: true, high: true })
 const isActionLoading = ref(false)
 const expandedHistory = ref(null)
 const activeVersion = ref(null)
+const installedModules = ref([])
+
+const isModuleInstalled = (id) => installedModules.value.includes(id)
 
 const isAdmin = computed(() => props.user?.role?.toLowerCase() === 'admin')
 const visibleTabs = computed(() => {
@@ -462,6 +501,37 @@ const fetchAllRepos = async () => {
   isLoading.value = false
   if (merged.length === 0 && repositories.value.length > 0) {
     fetchError.value = 'No plugins found. Check that your repository URLs are correct.'
+  }
+}
+
+const syncModules = async () => {
+  try {
+    const res = await fetch('/api/modules')
+    if (res.ok) {
+      installedModules.value = await res.json()
+    }
+  } catch (e) {
+    console.error('[TTYAN] Failed to sync modules:', e)
+  }
+}
+
+const installModule = async (moduleId) => {
+  isActionLoading.value = true
+  try {
+    const res = await fetch('/api/modules/install', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: moduleId })
+    })
+    if (res.ok) {
+      await syncModules()
+    } else {
+      alert('Module installation failed')
+    }
+  } catch (e) {
+    alert(`Error: ${e.message}`)
+  } finally {
+    isActionLoading.value = false
   }
 }
 
@@ -684,6 +754,7 @@ const handleEsc = (e) => {
 
 onMounted(() => {
   fetchAllRepos()
+  syncModules()
   window.addEventListener('keydown', handleEsc)
 })
 
@@ -1245,12 +1316,36 @@ onUnmounted(() => {
   margin-right: 8px;
 }
 
-.status-label.installed { background: var(--accent-light); color: var(--accent-color); }
+.status-label, .badge {
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.status-label.installed { 
+  background: var(--accent-light); 
+  color: var(--accent-color); 
+  border: 1px solid var(--accent-active);
+}
+
+.badge {
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-light);
+}
+
 .status-label.available { background: var(--bg-tertiary); color: var(--text-secondary); }
 
 .confirmation-modal {
   max-width: 500px;
-  max-height: 80vh;
+  max-height: 85vh;
+  overflow-y: auto;
 }
 
 .modal-content-inner {
@@ -1263,6 +1358,87 @@ onUnmounted(() => {
 .modal-hint {
   color: var(--text-secondary);
   font-size: 0.95rem;
+}
+
+/* Modules Requirement Section */
+.modules-requirement {
+  padding: 16px;
+  background: rgba(59, 130, 246, 0.05);
+  border: 1px solid rgba(59, 130, 246, 0.2);
+  border-radius: var(--radius-md);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.section-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--accent-color);
+}
+
+.section-title h4 {
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.modules-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.module-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 12px;
+  background: var(--bg-secondary);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-color);
+}
+
+.module-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.module-id {
+  font-family: monospace;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.status-indicator {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+
+.status-dot.installed { background: #10b981; box-shadow: 0 0 8px #10b981; }
+.status-dot.missing { background: #ef4444; }
+
+.status-text {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.check-icon {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .modal-footer {
