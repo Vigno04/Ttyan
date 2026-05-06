@@ -7,6 +7,13 @@
   "path": "Torrents/Tools",
   "entrypoint": "worker.js",
   "storage": "server",
-  "permissions": [],
+  "permissions": [
+    "storage:server",
+    "network:http"
+  ],
+  "allowed_domains": [
+    "raw.githubusercontent.com",
+    "github.com"
+  ],
   "modules": []
 }

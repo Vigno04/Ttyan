@@ -1,0 +1,17 @@
+{
+  "id": "com.ttyan.universaldownloader",
+  "name": "Universal Downloader",
+  "version": "1.0.0",
+  "description": "Download videos from YouTube, TikTok, and more.",
+  "author": "Ttyan Official",
+  "permissions": [
+    "https://*.youtube.com/*",
+    "https://*.tiktok.com/*",
+    "storage:sandboxed"
+  ],
+  "modules": [
+    "ttyan.ytdlp"
+  ],
+  "entry": "worker.js",
+  "ui": "ui.json"
+}

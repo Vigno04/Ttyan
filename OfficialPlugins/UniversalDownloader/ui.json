@@ -1,0 +1,15 @@
+{
+  "type": "form",
+  "elements": [
+    {
+      "type": "input",
+      "id": "url",
+      "label": "Video URL"
+    },
+    {
+      "type": "button",
+      "id": "download",
+      "label": "Download"
+    }
+  ]
+}

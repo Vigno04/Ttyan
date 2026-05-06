@@ -42,3 +42,6 @@ Thumbs.db
 
 # temp folders
 temp/
+
+# testing data
+storage/

@@ -1,4 +1,13 @@
-[
-  "TrackerCleaner",
-  "GeminiWatermarkRemover"
-]
+{
+  "plugins": {
+    "TrackerCleaner": {
+      "1.0.0": "TrackerCleaner"
+    },
+    "GeminiWatermarkRemover": {
+      "1.0.0": "GeminiWatermarkRemover"
+    },
+    "UniversalDownloader": {
+      "1.0.0": "UniversalDownloader"
+    }
+  }
+}

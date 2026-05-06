@@ -40,7 +40,12 @@
           </div>
           <div class="plugin-header">
             <h3>{{ plugin.name }}</h3>
-            <span class="version badge">v{{ plugin.version }}</span>
+            <div class="version-selector" v-if="pluginVersions[plugin.id]?.length > 1">
+              <select v-model="selectedVersions[plugin.id]" class="version-select">
+                <option v-for="v in pluginVersions[plugin.id]" :key="v.version" :value="v.version">v{{ v.version }}</option>
+              </select>
+            </div>
+            <span v-else class="version badge">v{{ plugin.version }}</span>
           </div>
           <p class="description">{{ plugin.description }}</p>
           <div class="plugin-footer">
@@ -126,6 +131,45 @@
         </div>
       </div>
     </div>
+
+    <!-- Installation Modal Popup -->
+    <div v-if="installingPlugin" class="modal-overlay">
+      <div class="modal glass install-modal">
+        <h3>Install {{ installingPlugin.name }}</h3>
+        <p>This plugin requests the following permissions and modules. Please review carefully.</p>
+        
+        <div class="permissions-list">
+          <!-- Green Tier (Safe) -->
+          <div v-if="tierCategorized.green.length" class="permission-tier green-tier">
+            <h4><span class="tier-icon">🟢</span> Verified Safe</h4>
+            <ul>
+              <li v-for="(item, i) in tierCategorized.green" :key="'g'+i">{{ item.label }}</li>
+            </ul>
+          </div>
+          
+          <!-- Yellow Tier (Warnings) -->
+          <div v-if="tierCategorized.yellow.length" class="permission-tier yellow-tier">
+            <h4><span class="tier-icon">🟡</span> Standard Permissions</h4>
+            <ul>
+              <li v-for="(item, i) in tierCategorized.yellow" :key="'y'+i">{{ item.label }}</li>
+            </ul>
+          </div>
+          
+          <!-- Red Tier (Danger) -->
+          <div v-if="tierCategorized.red.length" class="permission-tier red-tier">
+            <h4><span class="tier-icon">🔴</span> High Risk</h4>
+            <ul>
+              <li v-for="(item, i) in tierCategorized.red" :key="'r'+i">{{ item.label }}</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="modal-actions">
+          <button class="btn btn-outline" @click="cancelInstall">Cancel</button>
+          <button class="btn btn-primary" @click="confirmInstall" :disabled="!allDependenciesMet">Install Plugin</button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -185,12 +229,13 @@ const toRawUrl = (url) => {
 // ── Available plugins (merged from all repos) ─────────────────────────────────
 
 const availablePlugins = ref([])
+const pluginVersions = ref({}) // id -> array of manifests
+const selectedVersions = ref({}) // id -> selected version string
 
 const fetchAllRepos = async () => {
   isLoading.value = true
   fetchError.value = null
-  const merged = []
-  const seen = new Set()
+  const mergedMap = new Map()
 
   for (const repo of repositories.value) {
     try {
@@ -198,15 +243,31 @@ const fetchAllRepos = async () => {
       const res = await fetch(rawUrl)
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       
-      const pluginFolders = await res.json() // Array of strings like ["OfficialPlugins/TrackerCleaner"]
+      const repoData = await res.json()
+      
+      let pluginFolders = []
+      const availableModules = (!Array.isArray(repoData) && repoData.modules) ? repoData.modules : {}
+      
+      if (Array.isArray(repoData)) {
+        pluginFolders = repoData
+      } else if (repoData.plugins) {
+        if (Array.isArray(repoData.plugins)) {
+          pluginFolders = repoData.plugins
+        } else {
+          for (const pluginKey in repoData.plugins) {
+            const versionsObj = repoData.plugins[pluginKey];
+            for (const version in versionsObj) {
+              pluginFolders.push(versionsObj[version]);
+            }
+          }
+        }
+      }
       
       // Get the base URL by removing the registry.json part
       const base = repo.url.substring(0, repo.url.lastIndexOf('/'))
 
       for (const folderPath of pluginFolders) {
         try {
-          // If folderPath is "A/B" and base ends with "/A", we should use parent of base.
-          // This avoids doubling folder names if the registry is inside the plugin folder.
           let effectiveBase = base;
           const folderParts = folderPath.split('/');
           const baseParts = base.split('/');
@@ -223,17 +284,19 @@ const fetchAllRepos = async () => {
           const manifestRes = await fetch(toRawUrl(manifestUrl))
           if (manifestRes.ok) {
             const manifest = await manifestRes.json()
-            if (!seen.has(manifest.id)) {
-              seen.add(manifest.id)
-              // basePath is the folder containing the manifest
-              manifest.basePath = toRawUrl(`${effectiveBase}/${folderPath}`)
-              
-              // Resolve relative image paths
-              if (manifest.image && !manifest.image.startsWith('http')) {
-                manifest.image = toRawUrl(`${effectiveBase}/${folderPath}/${manifest.image}`)
-              }
-              
-              merged.push(manifest)
+            manifest.basePath = toRawUrl(`${effectiveBase}/${folderPath}`)
+            
+            if (manifest.image && !manifest.image.startsWith('http')) {
+              manifest.image = toRawUrl(`${effectiveBase}/${folderPath}/${manifest.image}`)
+            }
+            
+            if (!mergedMap.has(manifest.id)) {
+              mergedMap.set(manifest.id, [])
+            }
+            // Check if this version already exists
+            const existingVersions = mergedMap.get(manifest.id)
+            if (!existingVersions.some(m => m.version === manifest.version)) {
+              existingVersions.push(manifest)
             }
           }
         } catch (me) {
@@ -241,13 +304,27 @@ const fetchAllRepos = async () => {
         }
       }
       repo.status = 'online'
+      if (!window.ttyan_repoModules) window.ttyan_repoModules = {}
+      Object.assign(window.ttyan_repoModules, availableModules)
     } catch (e) {
       repo.status = 'offline'
       console.warn(`[TTYAN] Failed to fetch repo ${repo.url}:`, e)
     }
   }
 
+  // Process gathered versions
+  const merged = []
+  const vMap = {}
+  for (const [id, versions] of mergedMap.entries()) {
+    // Sort versions descending roughly
+    versions.sort((a, b) => b.version.localeCompare(a.version))
+    vMap[id] = versions
+    selectedVersions.value[id] = versions[0].version
+    merged.push(versions[0]) // default to showing newest
+  }
+
   saveRepos()
+  pluginVersions.value = vMap
   availablePlugins.value = merged
   isLoading.value = false
   if (merged.length === 0 && repositories.value.length > 0) {
@@ -257,12 +334,12 @@ const fetchAllRepos = async () => {
 
 const filteredPlugins = computed(() => {
   const q = searchQuery.value.trim().toLowerCase()
-  if (!q) return availablePlugins.value
+  if (!q) return availablePlugins.value.map(p => pluginVersions.value[p.id]?.find(v => v.version === selectedVersions.value[p.id]) || p)
   return availablePlugins.value.filter(p =>
     p.name.toLowerCase().includes(q) ||
     p.description?.toLowerCase().includes(q) ||
     p.author?.toLowerCase().includes(q)
-  )
+  ).map(p => pluginVersions.value[p.id]?.find(v => v.version === selectedVersions.value[p.id]) || p)
 })
 
 // ── Installed plugins ──────────────────────────────────────────────────────────
@@ -281,9 +358,66 @@ const hasUpdate = (plugin) => {
   return latest && latest !== plugin.version
 }
 
+const installingPlugin = ref(null)
+const tierCategorized = ref({ green: [], yellow: [], red: [] })
+const allDependenciesMet = ref(true)
+
 const installPlugin = (plugin) => {
   if (!isInstalled(plugin.id)) {
-    saveInstalled([...props.installedPlugins, { ...plugin }])
+    // Generate tier categorization
+    const categorization = { green: [], yellow: [], red: [] }
+    let met = true
+    
+    // Check publisher
+    const isSafePublisher = plugin.author?.toLowerCase().includes('ttyan') || 
+                            (plugin.basePath && plugin.basePath.includes('github.com/vigno04'))
+    if (isSafePublisher) {
+      categorization.green.push({ label: `Verified Publisher: ${plugin.author}` })
+    } else {
+      categorization.yellow.push({ label: `Third-party Publisher: ${plugin.author || 'Unknown'}` })
+    }
+
+    // Check permissions
+    if (plugin.permissions && Array.isArray(plugin.permissions)) {
+      plugin.permissions.forEach(perm => {
+        if (perm.includes('youtube.com') || perm.includes('tiktok.com')) {
+          categorization.green.push({ label: `Safe Domain Access: ${perm}` })
+        } else if (perm === 'storage:sandboxed') {
+          categorization.yellow.push({ label: 'Sandboxed Local Storage (Low risk)' })
+        } else if (perm.startsWith('http')) {
+          categorization.yellow.push({ label: `Internet Access: ${perm}` })
+        } else {
+          categorization.red.push({ label: `High Risk Permission: ${perm}` })
+        }
+      })
+    }
+
+    // Check modules
+    if (plugin.modules && Array.isArray(plugin.modules)) {
+      plugin.modules.forEach(mod => {
+        const repoModules = window.ttyan_repoModules || {}
+        if (repoModules[mod]) {
+          categorization.green.push({ label: `Official Module Request: ${repoModules[mod].name} (${mod})` })
+        } else {
+          categorization.yellow.push({ label: `Unknown Module Request: ${mod}` })
+        }
+      })
+    }
+    
+    tierCategorized.value = categorization
+    allDependenciesMet.value = met
+    installingPlugin.value = plugin
+  }
+}
+
+const cancelInstall = () => {
+  installingPlugin.value = null
+}
+
+const confirmInstall = () => {
+  if (installingPlugin.value) {
+    saveInstalled([...props.installedPlugins, { ...installingPlugin.value }])
+    installingPlugin.value = null
   }
 }
 
@@ -637,5 +771,16 @@ onMounted(fetchAllRepos)
   gap: 8px;
   flex-shrink: 0;
   margin-left: 16px;
+}
+
+.version-select {
+  background: var(--bg-glass);
+  color: var(--text-primary);
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-sm);
+  padding: 2px 6px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  outline: none;
 }
 </style>

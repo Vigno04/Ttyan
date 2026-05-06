@@ -1,0 +1,19 @@
+{
+  "id": "ttyan.ytdlp",
+  "name": "yt-dlp",
+  "version": "2026.03.17",
+  "description": "Video download tool",
+  "author": "Ttyan Official",
+  "comments": "Modules inherit the network restrictions, allowed domains, and permission scope of the calling plugin. They do not bypass the sandbox.",
+  "binaries": {
+    "windows-x86_64": {
+      "url": "https://github.com/yt-dlp/yt-dlp/releases/download/2026.03.17/yt-dlp.exe"
+    },
+    "linux-x86_64": {
+      "url": "https://github.com/yt-dlp/yt-dlp/releases/download/2026.03.17/yt-dlp"
+    },
+    "darwin-arm64": {
+      "url": "https://github.com/yt-dlp/yt-dlp/releases/download/2026.03.17/yt-dlp_macos"
+    }
+  }
+}
