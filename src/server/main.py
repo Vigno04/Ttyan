@@ -168,6 +168,33 @@ async def install_module(data: dict = Body(...)):
     
     return {"status": "success"}
 
+@app.post("/api/modules/{module_id}/execute")
+async def execute_module(module_id: str, data: dict = Body(...)):
+    args = data.get("args", [])
+    if not isinstance(args, list):
+        raise HTTPException(status_code=400, detail="args must be a list")
+    
+    binary_name = None
+    if module_id == "ttyan.ytdlp":
+        binary_name = "yt-dlp"
+    elif module_id == "ttyan.ffmpeg":
+        binary_name = "ffmpeg"
+    
+    if not binary_name:
+        raise HTTPException(status_code=400, detail="Unknown binary for module")
+        
+    import subprocess
+    try:
+        cmd = [binary_name] + [str(a) for a in args]
+        result = subprocess.run(cmd, capture_output=True, text=True, check=False)
+        return {
+            "stdout": result.stdout,
+            "stderr": result.stderr,
+            "returncode": result.returncode
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 # Serve plugins as static files from the persistent storage
 app.mount("/plugins", StaticFiles(directory=str(PLUGINS_DIR)), name="plugins")
 

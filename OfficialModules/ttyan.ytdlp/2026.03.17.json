@@ -9,8 +9,14 @@
     "windows-x86_64": {
       "url": "https://github.com/yt-dlp/yt-dlp/releases/download/2026.03.17/yt-dlp.exe"
     },
+    "windows-arm64": {
+      "url": "https://github.com/yt-dlp/yt-dlp/releases/download/2026.03.17/yt-dlp_windows_aarch64.exe"
+    },
     "linux-x86_64": {
-      "url": "https://github.com/yt-dlp/yt-dlp/releases/download/2026.03.17/yt-dlp"
+      "url": "https://github.com/yt-dlp/yt-dlp/releases/download/2026.03.17/yt-dlp_linux"
+    },
+    "linux-arm64": {
+      "url": "https://github.com/yt-dlp/yt-dlp/releases/download/2026.03.17/yt-dlp_linux_aarch64"
     },
     "darwin-arm64": {
       "url": "https://github.com/yt-dlp/yt-dlp/releases/download/2026.03.17/yt-dlp_macos"

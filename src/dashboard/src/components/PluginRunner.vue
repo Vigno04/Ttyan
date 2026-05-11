@@ -31,6 +31,29 @@
         />
       </div>
 
+      <!-- Select component -->
+      <div v-else-if="component.type === 'select'" class="form-group">
+        <label v-if="component.label" class="input-label">{{ component.label }}</label>
+        <select 
+          class="input-glass" 
+          v-model="state[component.id]" 
+          :disabled="component.readonly"
+        >
+          <option v-for="opt in component.options" :key="opt.value" :value="opt.value">
+            {{ opt.label }}
+          </option>
+        </select>
+      </div>
+
+      <!-- Video component -->
+      <div v-else-if="component.type === 'video'" class="form-group flex justify-center">
+        <video 
+          controls
+          class="w-full max-w-full rounded-xl overflow-hidden glass"
+          :src="component.src"
+        ></video>
+      </div>
+
       <!-- Image Upload component with Previews -->
       <div v-else-if="component.type === 'image-upload'" class="form-group">
         <div 
@@ -197,6 +220,8 @@ const initWorker = async () => {
       
       if (type === 'update_ui') {
         state.value[id] = value
+      } else if (type === 'update_layout') {
+        layout.value = value
       } else if (type === 'notify') {
         console.log(`[Plugin ${props.plugin.id}]: ${message}`)
       } else if (type === 'ready') {

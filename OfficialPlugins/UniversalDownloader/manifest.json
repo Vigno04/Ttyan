@@ -2,6 +2,7 @@
   "id": "com.ttyan.universaldownloader",
   "name": "Universal Downloader",
   "version": "1.0.0",
+  "path": "Video/Tools",
   "description": "Download videos from YouTube, TikTok, Instagram, Twitter, and more.",
   "author": "Ttyan Official",
   "permissions": [
@@ -20,7 +21,8 @@
     "https://*.vimeo.com/*"
   ],
   "modules": [
-    "ttyan.ytdlp"
+    "ttyan.ytdlp",
+    "ttyan.ffmpeg"
   ],
   "entrypoint": "worker.js",
   "ui": "ui.json"

@@ -10,9 +10,12 @@ RUN npm run build
 FROM python:3.9-slim
 WORKDIR /app
 
+# Install system dependencies (e.g. ffmpeg)
+RUN apt-get update && apt-get install -y ffmpeg && rm -rf /var/lib/apt/lists/*
+
 # Install backend dependencies
 COPY server/requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt yt-dlp
 
 # Copy backend source
 COPY server/ .
